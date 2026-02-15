@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/img/logo.png">
+    <meta name="theme-color" content="#003366">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registered with scope: ', registration.scope);
+                }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGP - Justice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <style>
+        /* Charte "Gouvernement" */
+        .bg-gov-blue { background-color: #003366; }
+        .text-gov-blue { color: #003366; }
+        .bg-gov-gold { background-color: #f7d616; }
+        .border-gov-gold { border-color: #f7d616; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <nav class="bg-gov-blue p-4 shadow-lg fixed w-full z-10 top-0">
+        <div class="container mx-auto flex flex-wrap items-center justify-between">
+            <div class="flex items-center text-white mr-6">
+                <span class="font-bold text-xl tracking-tight uppercase">SGP Justice</span>
+            </div>
+            <div class="flex items-center text-white text-sm">
+                <span class="mr-4 opacity-70">{{ user.get_role_display }} ({{ user.username }})</span>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold py-1 px-3 rounded">
+                        Déconnexion
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-24 px-4 mb-10">
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+{% extends 'base_dashboard.html' %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <div class="md:col-span-1 space-y-6">
+        
+        <a href="{% url 'dashboard' %}" class="inline-flex items-center text-gray-600 hover:text-gov-blue font-bold mb-4">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Retour au Dashboard
+        </a>
+
+        <div class="bg-white shadow rounded-lg p-6 border-t-4 border-gov-blue">
+            <h2 class="text-xl font-bold mb-2 text-gov-blue">Dossier #{{ plainte.uuid_public|stringformat:"s"|slice:":8" }}</h2>
+            <div class="text-sm space-y-2">
+                <p><span class="font-bold">Objet:</span> {{ plainte.objet }}</p>
+                <p><span class="font-bold">Plaignant:</span> {{ plainte.plaignant_nom }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="font-bold border-b pb-2 mb-4">Pièces à conviction</h3>
+            
+            <ul class="space-y-3 mb-6">
+                {% for piece in plainte.pieces.all %}
+                <li class="text-sm bg-gray-50 p-2 rounded border-l-2 border-gov-gold">
+                    <p class="font-bold">{{ piece.nom }}</p>
+                    {% if piece.fichier %}
+                        <a href="{{ piece.fichier.url }}" target="_blank" class="text-blue-600 hover:underline text-xs">Voir fichier</a>
+                    {% else %}
+                        <span class="text-xs text-gray-500">Physique / Pas de fichier</span>
+                    {% endif %}
+                </li>
+                {% empty %}
+                <li class="text-xs text-gray-400 italic">Aucune pièce.</li>
+                {% endfor %}
+            </ul>
+
+            {% if not plainte.est_cloture %}
+            <div class="border-t pt-4">
+                <h4 class="text-xs font-bold uppercase mb-2">Ajouter une nouvelle pièce</h4>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="space-y-2 text-sm">
+                        {{ piece_form.nom }}
+                        {{ piece_form.type_piece }}
+                        {{ piece_form.fichier }}
+                        {{ piece_form.description }}
+                    </div>
+                    <button type="submit" name="submit_piece" class="mt-3 w-full bg-gray-700 hover:bg-black text-white py-2 rounded text-sm font-bold">
+                        + Ajouter la pièce
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="md:col-span-2">
+        {% if not plainte.est_cloture %}
+        <div class="bg-white shadow p-6 mb-6 rounded border-l-4 border-gov-gold">
+            <h3 class="font-bold mb-4">Mettre à jour le dossier</h3>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="mb-3">{{ form.type_etape }}</div>
+                <div class="mb-3">{{ form.document_joint }}</div>
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    {{ form.commentaire_interne }}
+                    {{ form.message_public }}
+                </div>
+
+                <button type="submit" name="submit_etape" class="bg-gov-blue text-white px-6 py-2 rounded font-bold">
+                    Valider l'étape
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="bg-white shadow p-6 rounded">
+            <h3 class="font-bold mb-4">Historique</h3>
+            {% for etape in historique %}
+                <div class="mb-4 border-l-2 border-gray-300 pl-4">
+                    <p class="font-bold text-gov-blue">{{ etape.get_type_etape_display }}</p>
+                    <p class="text-xs text-gray-500">{{ etape.date_traitement }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

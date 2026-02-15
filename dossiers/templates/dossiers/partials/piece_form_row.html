@@ -1,0 +1,15 @@
+<div class="piece-row grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 border border-gray-200 rounded bg-gray-50 animate-fade-in-down">
+    <div>
+        {{ form.nom.label_tag }}
+        {{ form.nom }}
+    </div>
+    <div>
+        {{ form.type_piece.label_tag }}
+        {{ form.type_piece }}
+    </div>
+    <div>
+        {{ form.fichier.label_tag }}
+        {{ form.fichier }}
+    </div>
+    {{ form.id }}
+</div>

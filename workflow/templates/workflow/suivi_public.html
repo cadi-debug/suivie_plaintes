@@ -1,0 +1,263 @@
+{% extends 'base_auth.html' %}
+
+{% block content %}
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<div class="w-full max-w-6xl mx-auto p-4">
+    
+    <div class="mb-4">
+        <a href="{% url 'home' %}" class="inline-flex items-center text-gray-500 hover:text-gov-blue font-bold transition">
+            <i class="fas fa-arrow-left mr-2"></i> Retour à l'accueil
+        </a>
+    </div>
+
+    <div class="bg-white shadow-lg rounded-lg border-t-4 border-gov-blue p-6 mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gov-blue">Suivi de Procédure</h1>
+                <p class="text-sm text-gray-500 mt-1">Ref: <span class="bg-gray-100 px-2 py-1 rounded font-mono font-bold">#{{ plainte.uuid_public|stringformat:"s"|slice:":8" }}</span></p>
+            </div>
+            <div class="mt-4 md:mt-0 text-right">
+                {% if plainte.est_cloture %}
+                    <span class="px-3 py-1 rounded-full text-sm font-bold bg-gray-800 text-white">
+                        Dossier Terminé
+                    </span>
+                {% else %}
+                    <span class="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 animate-pulse">
+                        En cours
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mt-4 border-t pt-4">
+            <p class="text-gray-700"><strong>Objet :</strong> {{ plainte.objet }}</p>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-xl rounded-lg overflow-hidden relative">
+        <div class="bg-gray-50 px-6 py-3 border-b border-gray-200 flex justify-between">
+            <h3 class="font-bold text-gray-700 uppercase">Parcours Judiciaire</h3>
+            <div class="text-xs text-gray-400 italic">Temps réel vs Théorique</div>
+        </div>
+        
+        <div class="overflow-x-auto bg-white">
+            <div id="d3-container" style="min-width: 900px; height: 500px; cursor: grab;"></div>
+        </div>
+
+        <div id="node-details" class="absolute top-16 right-4 w-80 bg-white/95 backdrop-blur shadow-2xl rounded-lg border border-gray-200 transform translate-x-full transition-transform duration-300 z-10 hidden">
+            <div class="p-4 relative">
+                <button onclick="closeDetails()" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+                <h4 id="detail-title" class="font-bold text-lg text-gov-blue mb-1">Titre</h4>
+                <p id="detail-date" class="text-xs text-gray-500 mb-3 uppercase tracking-wide">Date</p>
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-3">
+                    <p id="detail-msg" class="text-sm text-gray-800 italic">Message</p>
+                </div>
+                <div id="detail-doc-container" class="hidden mt-3 pt-3 border-t">
+                    <a id="detail-doc-link" href="#" target="_blank" class="flex items-center p-2 bg-red-50 text-red-700 rounded border border-red-200 hover:bg-red-100">
+                        <i class="fas fa-file-pdf text-2xl mr-3"></i>
+                        <div><span class="block text-xs font-bold uppercase">Jugement / Acte</span><span class="text-xs underline">Télécharger</span></div>
+                    </a>
+                </div>
+                <p class="text-xs text-gray-400 mt-4 text-right">Agent : <span id="detail-author">...</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const uuid = "{{ plainte.uuid_public }}";
+        const container = document.getElementById("d3-container");
+        const width = container.clientWidth;
+        const height = 500;
+        const margin = {top: 50, left: 80};
+
+        const svg = d3.select("#d3-container").append("svg")
+            .attr("width", "100%")
+            .attr("height", height)
+            .call(d3.zoom().on("zoom", (e) => g.attr("transform", e.transform)))
+            .on("dblclick.zoom", null);
+
+        const g = svg.append("g");
+
+        d3.json(`/api/graph/${uuid}/`).then(data => {
+            
+            // --- 1. CALCUL DES POSITIONS ---
+            let currentX = margin.left;
+            const BaseY = height / 2;
+            const ZigZagOffset = 70; // Hauteur du zigzag
+            const FixedDistance = 160; // Distance standard pour les étapes futures
+
+            // Map pour retrouver les nœuds par ID rapidement
+            const nodeMap = {};
+
+            // A. Positionner les étapes linéaires (Index 0 à 5: DEPOT -> JUGEMENT)
+            // L'API renvoie les nœuds dans l'ordre d'insertion : Roadmap d'abord, EndStates ensuite
+            // Les 6 premiers sont la roadmap
+            
+            const linearNodes = data.nodes.slice(0, 6);
+            const branchNodes = data.nodes.slice(6); // CLOTURE et REJET
+
+            linearNodes.forEach((node, i) => {
+                if (i === 0) {
+                    node.x = currentX;
+                } else {
+                    const prev = linearNodes[i-1];
+                    // Si les deux sont complétés, on use le temps, sinon distance fixe
+                    if (node.status !== 'future' && prev.status !== 'future') {
+                        let dist = (node.timestamp - prev.timestamp) * 0.00005;
+                        if (dist < 120) dist = 120;
+                        if (dist > 300) dist = 300;
+                        currentX += dist;
+                    } else {
+                        currentX += FixedDistance;
+                    }
+                    node.x = currentX;
+                }
+                // ZigZag
+                node.y = (i % 2 === 0) ? BaseY + ZigZagOffset : BaseY - ZigZagOffset;
+                nodeMap[node.id] = node;
+            });
+
+            // B. Positionner la bifurcation (CLOTURE et REJET partent de JUGEMENT)
+            const jugementNode = linearNodes[linearNodes.length - 1]; // Dernier nœud linéaire
+            
+            branchNodes.forEach((node, i) => {
+                // On les place après Jugement
+                node.x = jugementNode.x + 200; 
+                
+                // On les écarte verticalement
+                if (node.id === 'CLOTURE') {
+                    node.y = BaseY - 120; // Vers le haut
+                } else if (node.id === 'REJET') {
+                    node.y = BaseY + 120; // Vers le bas
+                } else {
+                    node.y = BaseY;
+                }
+                nodeMap[node.id] = node;
+            });
+
+            // Ajuster largeur SVG
+            const finalWidth = currentX + 300;
+            if(finalWidth > width) d3.select("svg").attr("width", finalWidth);
+
+
+            // --- 2. DESSIN DES LIENS ---
+            const linksData = data.links.map(l => ({
+                source: nodeMap[l.source],
+                target: nodeMap[l.target],
+                status: nodeMap[l.target].status // Le lien prend le statut de la cible
+            }));
+
+            g.selectAll(".link")
+                .data(linksData)
+                .enter()
+                .append("path")
+                .attr("d", d => {
+                    const sx = d.source.x, sy = d.source.y;
+                    const tx = d.target.x, ty = d.target.y;
+                    return `M${sx},${sy} C${(sx+tx)/2},${sy} ${(sx+tx)/2},${ty} ${tx},${ty}`;
+                })
+                .attr("fill", "none")
+                .attr("stroke", d => d.status === 'future' || d.status === 'skipped' ? "#e2e8f0" : "#cbd5e1") // Gris clair si futur
+                .attr("stroke-width", 3)
+                .attr("stroke-dasharray", d => d.status === 'future' || d.status === 'skipped' ? "5,5" : "0"); // Pointillés si futur
+
+
+            // --- 3. DESSIN DES NOEUDS ---
+            const nodeGroup = g.selectAll(".node")
+                .data(data.nodes)
+                .enter()
+                .append("g")
+                .attr("class", "node cursor-pointer transition")
+                .attr("transform", d => `translate(${d.x}, ${d.y})`)
+                .on("click", (e, d) => showDetails(d));
+
+            // Cercle de fond (Ombre)
+            nodeGroup.append("circle")
+                .attr("r", 25)
+                .attr("fill", "white");
+
+            // Cercle principal
+            nodeGroup.append("circle")
+                .attr("r", 22)
+                .attr("stroke", d => getStrokeColor(d))
+                .attr("stroke-width", 3)
+                .attr("fill", d => getFillColor(d));
+
+            // Icône
+            nodeGroup.append("text")
+                .attr("class", "fas")
+                .attr("dy", 5)
+                .attr("text-anchor", "middle")
+                .attr("fill", d => d.status === 'future' || d.status === 'skipped' ? "#94a3b8" : "white")
+                .text(d => getIcon(d.type_code));
+
+            // Labels
+            nodeGroup.append("text")
+                .attr("dy", 45)
+                .attr("text-anchor", "middle")
+                .attr("class", d => `text-xs font-bold uppercase ${d.status === 'future' ? 'fill-gray-400' : 'fill-gray-700'}`)
+                .text(d => d.label);
+
+            nodeGroup.append("text")
+                .attr("dy", -35)
+                .attr("text-anchor", "middle")
+                .attr("class", "text-[10px] fill-gray-500")
+                .text(d => d.status === 'future' ? '' : d.date_str);
+
+        });
+    });
+
+    // --- COULEURS ET ICONES ---
+
+    function getStrokeColor(d) {
+        if (d.status === 'future' || d.status === 'skipped') return "#e2e8f0"; // Gris très clair
+        if (d.type_code === 'REJET') return "#ef4444"; // Rouge
+        if (d.type_code === 'CLOTURE') return "#1f2937"; // Noir
+        return "#10b981"; // Vert par défaut
+    }
+
+    function getFillColor(d) {
+        if (d.status === 'future' || d.status === 'skipped') return "#f8fafc"; // Blanc cassé
+        if (d.status === 'current') return "#f59e0b"; // Orange
+        if (d.type_code === 'REJET') return "#ef4444";
+        if (d.type_code === 'CLOTURE') return "#1f2937";
+        return "#10b981";
+    }
+
+    function getIcon(type) {
+        const icons = {
+            'DEPOT': '\uf07b', 'RECEVABILITE': '\uf00c', 'ENQUETE': '\uf002',
+            'AUDIENCE': '\uf0e3', 'DELIBERE': '\uf249', 'JUGEMENT': '\uf02d',
+            'CLOTURE': '\uf023', 'REJET': '\uf05e'
+        };
+        return icons[type] || '\uf111';
+    }
+
+    function showDetails(d) {
+        const box = document.getElementById("node-details");
+        box.classList.remove("hidden", "translate-x-full");
+        
+        document.getElementById("detail-title").textContent = d.label;
+        document.getElementById("detail-date").textContent = d.status === 'future' ? "Étape à venir" : d.date_str;
+        document.getElementById("detail-msg").textContent = d.message || "Aucun détail disponible.";
+        document.getElementById("detail-author").textContent = d.auteur;
+
+        const docContainer = document.getElementById("detail-doc-container");
+        if (d.document_url) {
+            docContainer.classList.remove("hidden");
+            document.getElementById("detail-doc-link").href = d.document_url;
+        } else {
+            docContainer.classList.add("hidden");
+        }
+    }
+
+    function closeDetails() {
+        document.getElementById("node-details").classList.add("translate-x-full");
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,298 @@
+{% extends 'base_dashboard.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+    <div class="mb-10">
+        <div class="flex items-center space-x-4 mb-6">
+            <a href="#" onclick="confirmNavigation(event)" class="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gov-blue transition-all">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-800">Déposer une plainte</h1>
+                <p class="text-sm text-gray-500">Remplissez les informations ci-dessous pour soumettre votre dossier.</p>
+            </div>
+        </div>
+
+        <div class="relative flex justify-between">
+            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2 z-0"></div>
+            <div id="progress-bar" class="absolute top-1/2 left-0 w-0 h-0.5 bg-gov-blue -translate-y-1/2 z-0 transition-all duration-500"></div>
+            
+            {% for i in "123" %}
+            <div class="relative z-10 flex flex-col items-center">
+                <div id="step-circle-{{ i }}" class="w-10 h-10 rounded-full border-2 bg-white flex items-center justify-center font-semibold transition-colors duration-300 border-gray-300 text-gray-400">
+                    {{ i }}
+                </div>
+                <span id="step-label-{{ i }}" class="absolute -bottom-6 text-[10px] uppercase tracking-wider font-bold text-gray-400 whitespace-nowrap">
+                    {% if i == "1" %}Nature{% elif i == "2" %}Identité{% else %}Documents{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-900/50 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Abandonner la saisie ?</h3>
+            <p class="text-sm text-gray-600 mb-6">Toutes les informations saisies seront définitivement perdues.</p>
+            <div class="flex space-x-3">
+                <button onclick="closeModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Annuler</button>
+                <a href="{% url 'dashboard' %}" class="flex-1 px-4 py-2 text-sm font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 transition">Quitter</a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="dossier-form" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {% csrf_token %}
+        
+        <div id="step-1-content" class="p-8">
+            <h2 class="text-lg font-medium text-gray-800 mb-6">1. Objet de la plainte</h2>
+            <div class="grid gap-6">
+                {% for field in form %}
+                    {% if forloop.counter <= 3 %}
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+                        {{ field }}
+                        <p class="text-xs text-red-500 mt-1 hidden" id="error-{{ field.name }}"></p>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button type="button" onclick="validateStep(1, 2)" class="bg-gov-blue text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all flex items-center shadow-md shadow-blue-100">
+                    Continuer
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="step-2-content" class="p-8 hidden">
+            <h2 class="text-lg font-medium text-gray-800 mb-6">2. Vos coordonnées</h2>
+            <div class="grid gap-6">
+                {% for field in form %}
+                    {% if forloop.counter > 3 and forloop.counter <= 6 %}
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="mt-8 flex justify-between items-center">
+                <button type="button" onclick="goToStep(1)" class="text-gray-500 font-medium hover:text-gray-700">Retour</button>
+                <button type="button" onclick="validateStep(2, 3)" class="bg-gov-blue text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-md shadow-blue-100">
+                    Continuer
+                </button>
+            </div>
+        </div>
+
+        <div id="step-3-content" class="p-8 hidden">
+            <h2 class="text-lg font-medium text-gray-800 mb-6">3. Pièces justificatives</h2>
+            {{ formset.management_form }}
+            <div id="pieces-container" class="space-y-4 mb-6">
+                {% for form in formset %}
+                <div class="piece-row bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">{{ form.id }}</div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nom du document</label>
+                            {{ form.nom }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type de pièce</label>
+                            {{ form.type_piece }}
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Fichier</label>
+                            {{ form.fichier }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <button type="button" id="add-piece-btn" class="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-gov-blue hover:text-gov-blue transition-all font-medium mb-8">
+                + Ajouter un autre document
+            </button>
+
+            <div class="flex justify-between items-center border-t pt-6">
+                <button type="button" onclick="goToStep(2)" class="text-gray-500 font-medium hover:text-gray-700">Retour</button>
+                <button type="submit" id="submit-btn" class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition-all transform hover:scale-105 shadow-lg shadow-green-100 opacity-50 cursor-not-allowed" disabled>
+                    Soumettre le dossier
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* Inputs stylisés */
+    input[type="text"], input[type="email"], input[type="date"], select, textarea {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        background-color: rgb(249, 250, 251);
+        border: 1px solid rgb(229, 231, 235);
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        outline: none;
+        color: rgb(55, 65, 81);
+    }
+
+    input[type="text"]:focus, input[type="email"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+        background-color: white;
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    input[type="file"] {
+        font-size: 0.875rem;
+        color: rgb(107, 114, 128);
+    }
+
+    input[type="file"]::file-selector-button {
+        margin-right: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        border: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        background-color: rgb(219, 234, 254);
+        color: #0066cc;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    input[type="file"]:hover::file-selector-button {
+        background-color: rgb(191, 219, 254);
+    }
+
+    .step-active-circle {
+        border-color: #0066cc !important;
+        background-color: #0066cc !important;
+        color: white !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 102, 204, 0.2) !important;
+    }
+
+    .step-active-label {
+        color: #0066cc !important;
+    }
+
+    .step-done-circle {
+        border-color: rgb(34, 197, 94) !important;
+        background-color: rgb(34, 197, 94) !important;
+        color: white !important;
+    }
+</style>
+
+<script>
+    let currentStep = 1;
+    let formModified = false;
+    const modal = document.getElementById('confirmation-modal');
+    
+    const completedSteps = { 1: false, 2: false, 3: false };
+
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+        el.addEventListener('input', () => formModified = true);
+    });
+
+    function goToStep(step) {
+        // Mise à jour de l'affichage des contenus
+        for (let i = 1; i <= 3; i++) {
+            document.getElementById(`step-${i}-content`).classList.toggle('hidden', i !== step);
+            
+            const circle = document.getElementById(`step-circle-${i}`);
+            const label = document.getElementById(`step-label-${i}`);
+            
+            // Reset styles
+            circle.classList.remove('step-active-circle', 'step-done-circle');
+            label.classList.remove('step-active-label');
+            circle.textContent = i;
+
+            if (i < step) {
+                circle.classList.add('step-done-circle');
+                circle.textContent = '✓';
+            } else if (i === step) {
+                circle.classList.add('step-active-circle');
+                label.classList.add('step-active-label');
+            }
+        }
+        
+        // Barre de progression
+        const progress = ((step - 1) / 2) * 100;
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+        
+        currentStep = step;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function validateStep(current, next) {
+        const currentDiv = document.getElementById(`step-${current}-content`);
+        const inputs = currentDiv.querySelectorAll('input[required], select[required]');
+        let valid = true;
+        
+        inputs.forEach(input => {
+            if (!input.value) {
+                valid = false;
+                input.classList.add('border-red-400', 'bg-red-50');
+            } else {
+                input.classList.remove('border-red-400', 'bg-red-50');
+            }
+        });
+        
+        if (valid) {
+            completedSteps[current] = true;
+            goToStep(next);
+            checkFinalValidation();
+        }
+    }
+
+    function checkFinalValidation() {
+        const btn = document.getElementById('submit-btn');
+        if (completedSteps[1] && completedSteps[2]) {
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.disabled = false;
+        }
+    }
+
+    function confirmNavigation(e) {
+        e.preventDefault();
+        if (formModified) {
+            modal.classList.replace('hidden', 'flex');
+        } else {
+            window.location.href = "{% url 'dashboard' %}";
+        }
+    }
+
+    function closeModal() {
+        modal.classList.replace('flex', 'hidden');
+    }
+
+    // Init au chargement
+    document.addEventListener('DOMContentLoaded', () => {
+        goToStep(1);
+        
+        // Logique ajout pièce
+        const container = document.getElementById('pieces-container');
+        const addButton = document.getElementById('add-piece-btn');
+        const totalForms = document.getElementById('id_pieces-TOTAL_FORMS');
+
+        addButton.addEventListener('click', () => {
+            let formIdx = parseInt(totalForms.value);
+            const rows = container.querySelectorAll('.piece-row');
+            const newRow = rows[0].cloneNode(true);
+            
+            newRow.querySelectorAll('input, select').forEach(input => {
+                if (input.name) {
+                    input.name = input.name.replace(/-\d+-/, `-${formIdx}-`);
+                    input.id = input.id.replace(/-\d+-/, `-${formIdx}-`);
+                    input.value = '';
+                }
+            });
+            
+            container.appendChild(newRow);
+            totalForms.value = formIdx + 1;
+        });
+    });
+</script>
+{% endblock %}

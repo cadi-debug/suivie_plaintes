@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Récépissé - {{ plainte.uuid_public }}</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; padding: 40px; color: #000; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { width: 80px; }
+        .titre { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 10px 0; }
+        .sub-titre { font-size: 14px; font-style: italic; }
+        
+        .box-info { border: 1px solid #000; padding: 20px; margin-bottom: 20px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .label { font-weight: bold; }
+        
+        .qr-section { text-align: center; margin-top: 40px; border: 2px dashed #333; padding: 20px; width: 60%; margin-left: auto; margin-right: auto; }
+        .footer { margin-top: 50px; font-size: 12px; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+        
+        /* Bouton d'impression (caché à l'impression) */
+        @media print { .no-print { display: none; } }
+        .btn-print { display: block; width: 100%; padding: 20px; background: #003366; color: white; text-align: center; font-size: 20px; cursor: pointer; text-decoration: none; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <a href="javascript:window.print()" class="no-print btn-print">🖨️ IMPRIMER / SAUVEGARDER EN PDF</a>
+
+    <div class="header">
+        <img src="/static/img/logo.png" alt="Armoiries" class="logo">
+        <div class="titre">République Démocratique du Congo</div>
+        <div class="sub-titre">Ministère de la Justice et Garde des Sceaux</div>
+        <h3>ACCUSÉ DE RÉCEPTION DE PLAINTE</h3>
+    </div>
+
+    <div class="box-info">
+        <div class="row">
+            <span class="label">Date du dépôt :</span>
+            <span>{{ plainte.date_creation|date:"d F Y à H:i" }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Bureau d'enregistrement :</span>
+            <span>{{ agent.institution.nom|default:"Greffe Central" }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Agent Traitant :</span>
+            <span>{{ agent.get_full_name|upper }} ({{ agent.username }})</span>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <p><strong>Plaignant :</strong> {{ plainte.plaignant_nom }}</p>
+        <p><strong>Objet :</strong> {{ plainte.objet }}</p>
+        <p><strong>Catégorie :</strong> {{ plainte.get_categorie_display }}</p>
+    </div>
+
+    <div class="qr-section">
+        <p style="font-weight: bold; margin-bottom: 10px;">CODE DE SUIVI DE DOSSIER</p>
+        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" width="150">
+        <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px; margin-top: 10px;">
+            #{{ plainte.uuid_public|stringformat:"s"|slice:":8" }}
+        </p>
+        <p style="font-size: 10px;">Scannez ce code sur le portail citoyen pour suivre l'évolution.</p>
+    </div>
+
+    <div class="footer">
+        Document généré électroniquement par le SGP (Système de Gestion des Plaintes).<br>
+        Ce document fait foi de dépôt mais ne préjuge pas de la recevabilité de la plainte.
+    </div>
+
+</body>
+</html>

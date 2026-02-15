@@ -1,0 +1,21 @@
+{
+  "name": "SGP Justice RDC",
+  "short_name": "Justice RDC",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003366",
+  "theme_color": "#003366",
+  "description": "Système de Gestion des Plaintes - Ministère de la Justice",
+  "icons": [
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

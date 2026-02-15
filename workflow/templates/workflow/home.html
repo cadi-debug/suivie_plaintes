@@ -1,0 +1,68 @@
+{% extends 'base_auth.html' %}
+
+{% block content %}
+<div class="auth-card" style="max-width: 500px; width: 95%;">
+    <div class="text-center mb-6">
+        <img src="/static/img/logo.png" alt="Logo" style="width: 80px; margin: 0 auto 15px;">
+        <h2 class="text-gov-blue" style="font-weight: 900; letter-spacing: -0.5px;">MINISTÈRE DE LA JUSTICE</h2>
+        <p class="text-gray-500 text-sm font-bold uppercase">Suivi des dossiers judiciaires</p>
+    </div>
+
+    <div id="scanner-section" class="hidden mb-6">
+        <div id="reader" style="width: 100%; border-radius: 12px; overflow: hidden; border: 3px solid #003366;"></div>
+        <button onclick="stopScanner()" class="mt-4 bg-gray-500 text-white w-full py-2 rounded">Annuler</button>
+    </div>
+
+    <div id="action-section">
+        <button onclick="startScanner()" class="bg-gov-blue text-white w-full py-4 rounded-lg shadow-lg flex items-center justify-center gap-3 font-bold mb-6 hover:bg-blue-900 transition">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h3m-3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            SCANNER LE RÉCÉPISSÉ
+        </button>
+
+        <div class="relative mb-6">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-300"></div></div>
+            <div class="relative flex justify-center text-sm"><span class="px-2 bg-white text-gray-400 font-bold uppercase text-xs">Ou saisie manuelle</span></div>
+        </div>
+
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            {% if messages %}
+                {% for message in messages %}<div class="bg-red-100 text-red-700 p-3 rounded-md text-sm mb-4">{{ message }}</div>{% endfor %}
+            {% endif %}
+            <input type="text" name="dossier_id" id="dossier_id" placeholder="Référence du dossier..." 
+                   class="w-full border-2 border-gray-200 rounded-lg p-3 text-center font-mono focus:border-gov-blue outline-none transition">
+            <button type="submit" class="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-black">VÉRIFIER LE STATUT</button>
+        </form>
+    </div>
+
+    <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+        <a href="{% url 'login' %}" class="text-gov-blue text-sm font-bold opacity-70 hover:opacity-100 uppercase tracking-widest">Accès Espace Greffier</a>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+    let scanner;
+    function startScanner() {
+        document.getElementById('scanner-section').classList.remove('hidden');
+        document.getElementById('action-section').classList.add('hidden');
+        scanner = new Html5Qrcode("reader");
+        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            (decodedText) => {
+                let uuid = decodedText.includes('/suivi/') ? decodedText.split('/suivi/')[1].replace('/','') : decodedText;
+                document.getElementById('dossier_id').value = uuid;
+                stopScanner();
+                document.querySelector('form').submit();
+            }
+        );
+    }
+    function stopScanner() {
+        if(scanner) {
+            scanner.stop().then(() => {
+                document.getElementById('scanner-section').classList.add('hidden');
+                document.getElementById('action-section').classList.remove('hidden');
+            });
+        }
+    }
+</script>
+{% endblock %}

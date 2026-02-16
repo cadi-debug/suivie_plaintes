@@ -16,6 +16,11 @@
                 <p><span class="font-bold">Objet:</span> {{ plainte.objet }}</p>
                 <p><span class="font-bold">Plaignant:</span> {{ plainte.plaignant_nom }}</p>
             </div>
+            <div class="mt-4">
+                <a href="{% url 'recepisse_print' plainte.uuid_public %}" target="_blank" class="block w-full text-center bg-gray-800 hover:bg-black text-white font-bold py-2 px-4 rounded shadow">
+                    📄 Imprimer Récépissé
+                </a>
+            </div>
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">

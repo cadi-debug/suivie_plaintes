@@ -39,7 +39,7 @@ Une application Web & Mobile (PWA) permettant la digitalisation du processus de 
 Récupérez le code source (les migrations sont déjà incluses dans le dépôt).
 
 ```bash
-git clone <votre-repo-url>
+git clone https://github.com/cadi-debug/suivie_plaintes
 cd suivie_plaintes
 
 ```
@@ -123,8 +123,8 @@ python manage.py runserver
 
 ```
 
-* **Accueil Public (Scan/Recherche) :** [http://127.0.0.1:8000/](https://www.google.com/search?q=http://127.0.0.1:8000/)
-* **Connexion Agents :** [http://127.0.0.1:8000/accounts/login/](https://www.google.com/search?q=http://127.0.0.1:8000/accounts/login/)
+* **Accueil Public (Scan/Recherche) :** [http://127.0.0.1:8000/]
+* **Connexion Agents :** [http://127.0.0.1:8000/accounts/login/]
 
 ---
 
